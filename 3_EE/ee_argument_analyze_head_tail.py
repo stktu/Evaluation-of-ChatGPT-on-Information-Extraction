@@ -5,30 +5,30 @@ from config import get_opts_ee
 from ee_argument_report_metric import argument_report_metric_head_tail
 cur_path = os.path.abspath("..")
 sys.path.append(cur_path)
-from utils import Logger
+from src.utils import Logger
 
 
 def ee_get_head_tail_type(opts):
 
-    output_path = os.path.join(opts.input_dir, opts.task, opts.dataset) 
+    output_path = os.path.join(opts.input_dir, opts.task, opts.dataset)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    
+
     in_file_name = os.path.join(output_path, opts.train_file)
     out_file_name = os.path.join(output_path, "head_tail_types.json")
-    
+
     type_file_name = os.path.join(output_path, opts.type_file)
-    
+
     print("Load file: {}".format(in_file_name))
     with open(in_file_name, 'r', encoding='utf-8') as f,\
             open(type_file_name, "r", encoding="utf-8") as fr_type:
         data = json.load(f)
         types = json.load(fr_type)
         rel_type_dict = types["event_types"]
-        
+
         ## 统计 train file
         type2num = {}
-        for example in data:  
+        for example in data:
             for event in example["event"]:
                 rel_type = event["subtype"]
                 if rel_type not in type2num:
@@ -59,7 +59,7 @@ def ee_get_head_tail_type(opts):
 
 
 if __name__ == "__main__":
-    
+
     opts = get_opts_ee()
     # ee_get_head_tail_type(opts)
 

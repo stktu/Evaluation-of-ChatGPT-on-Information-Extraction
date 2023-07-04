@@ -5,29 +5,29 @@ from config import get_opts_ner
 from ner_report_metric import report_metric_head_tail
 cur_path = os.path.abspath("..")
 sys.path.append(cur_path)
-from utils import Logger
+from src.utils import Logger
 
 
 def ner_get_head_tail_type(opts):
 
-    output_path = os.path.join(opts.input_dir, opts.task, opts.dataset) 
+    output_path = os.path.join(opts.input_dir, opts.task, opts.dataset)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    
+
     in_file_name = os.path.join(output_path, opts.train_file)
     out_file_name = os.path.join(output_path, "head_tail_types.json")
-    
+
     type_file_name = os.path.join(output_path, opts.type_file)
-    
+
     print("Load file: {}".format(in_file_name))
     with open(in_file_name, 'r', encoding='utf-8') as f,\
             open(type_file_name, "r", encoding="utf-8") as fr_type:
         data = json.load(f)
         types = json.load(fr_type)
         ent_type_dict = types["entities"]
-        
+
         ## 统计 train file
-        for example in data:  
+        for example in data:
             for ent in example["entities"]:
                 e_type = ent["e_type"]
 
@@ -57,7 +57,7 @@ def ner_get_head_tail_type(opts):
 
 
 if __name__ == "__main__":
-    
+
     opts = get_opts_ner()
     # ner_get_head_tail_type(opts)
 

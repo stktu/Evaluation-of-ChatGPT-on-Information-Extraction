@@ -1,27 +1,27 @@
-import os
-import json
-import sys
 import ast
+import json
+import os
+
 from config import get_opts_ner as get_opts
-cur_path = os.getcwd()
-sys.path.append(cur_path)
-from utils import Logger, print_metrics, get_correct_list_from_response_list
+
+from src.utils import Logger, get_correct_list_from_response_list, print_metrics
 
 
-## 解析 response
+# 解析 response
 def response_string_to_list(response):
-    """return 
-        1) string 列表
-        2) list  列表
+    """return
+    1) string 列表
+    2) list  列表
     """
+
     def get_list_by_string(list_str):
         try:
-            res_list = ast.literal_eval(list_str) 
+            res_list = ast.literal_eval(list_str)
         except:
             res_list = []
         finally:
             return res_list
-    
+
     # response = response.lower()
     response = response.replace("(", "[").replace(")", "]")
     num_left = response.count("[")
@@ -30,19 +30,19 @@ def response_string_to_list(response):
 
     if num_left == 0:
         return res_list
-    
+
     if num_left == 1:
-        start_idx = response.find('[')
+        start_idx = response.find("[")
         response = response[start_idx:]
         num_right = response.count("]")
         if num_right < 1:
             return res_list
         else:
-            start_idx = response.find('[')
-            end_idx = response.find(']')
-            span = response[start_idx: end_idx+1]
+            start_idx = response.find("[")
+            end_idx = response.find("]")
+            span = response[start_idx : end_idx + 1]
             res_list = get_list_by_string(span)
-            res_list = [str(res).strip() for res in res_list] 
+            res_list = [str(res).strip() for res in res_list]
             return res_list
 
     # "['a', 'b'], ['c', 'd']"
@@ -50,15 +50,15 @@ def response_string_to_list(response):
     end_idx = -1
 
     for i, ch in enumerate(response):
-        if ch == '[':
+        if ch == "[":
             start_idx = i
-        if ch == ']':
+        if ch == "]":
             end_idx = i
         # print(start_idx, end_idx)
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            span = response[start_idx: end_idx+1]
+            span = response[start_idx : end_idx + 1]
             tmp_list = get_list_by_string(span)
-            tmp_list = [str(res).strip() for res in tmp_list] 
+            tmp_list = [str(res).strip() for res in tmp_list]
             res_list.append(tmp_list)
             start_idx = -1
             end_idx = -1
@@ -73,7 +73,7 @@ def get_result_list(response):
     for line in lines:
         flag = True
         tmp_res_list = response_string_to_list(line.strip())
-        if tmp_res_list == [] and line.strip() != '[]':
+        if tmp_res_list == [] and line.strip() != "[]":
             flag = False
 
         if tmp_res_list != [] and type(tmp_res_list[0]) == str:  # [, ]\n[, ]
@@ -120,7 +120,9 @@ def report_metric(opts, logger):
     logger.write("Load file: {}\n".format(opts.result_file))
     logger.write("Load types file: {}\n".format(opts.type_file))
 
-    with open(opts.result_file, 'r', encoding='utf-8') as fr, open(opts.type_file, 'r', encoding='utf-8') as fr_type:
+    with open(opts.result_file, "r", encoding="utf-8") as fr, open(
+        opts.type_file, "r", encoding="utf-8"
+    ) as fr_type:
         data = json.load(fr)
         types = json.load(fr_type)
         e_types = types["entities"]
@@ -129,7 +131,6 @@ def report_metric(opts, logger):
         else:
             e_types_list = [e_types[key]["short"].lower() for key in e_types]
 
-    
     ## statistics
     num_entity = 0
     num_invalid = 0
@@ -145,8 +146,7 @@ def report_metric(opts, logger):
     num_undefined_types = 0
     num_incorrect_types = 0
     num_other = 0
-    
-    
+
     for example in data:
         ## target
         strict_target_list = []
@@ -155,7 +155,7 @@ def report_metric(opts, logger):
         for ent in example["entities"]:
             ent_name = ent["e_name"].lower()
             if opts.verbose_type:
-                ent_type = e_types[ent["e_type"]]["verbose"].lower()  # 全写 
+                ent_type = e_types[ent["e_type"]]["verbose"].lower()  # 全写
             else:
                 ent_type = ent["e_type"].lower()  # 缩写
 
@@ -165,13 +165,12 @@ def report_metric(opts, logger):
             strict_target_list.append([ent_type, ent_name])
             num_entity += 1
 
-        
         response = example["response"]
         example["NER"], num_error_lines = get_result_list(response)
         num_other += num_error_lines
         res_flag = True
-    
-        if response.strip().strip('"').strip() != '[]' and example["NER"] == []:
+
+        if response.strip().strip('"').strip() != "[]" and example["NER"] == []:
             res_flag = False
 
         ## predict
@@ -179,14 +178,14 @@ def report_metric(opts, logger):
 
         for ent in example["NER"]:
             ent_name = ent["e_name"].lower()
-            ent_type = ent["e_type"].lower() 
+            ent_type = ent["e_type"].lower()
             strict_predict_list.append([ent_type, ent_name])
             if ent_type not in e_types_list:
                 num_undefined_types += 1
 
             if ent_name not in example["seq"].lower():
                 num_unmentioned_spans += 1
-            
+
             else:
 
                 flag = False
@@ -202,28 +201,43 @@ def report_metric(opts, logger):
                         ent_name_list.remove(tar_ent)
                         flag = True
 
-
                 if not flag:
                     num_unannotated_spans += 1
-            
+
         if len(ent_name_list) > 0:
             num_missing_spans += 1
 
         if not res_flag:
             num_invalid += 1
-        
-        ## hard-match 
-        strict_correct_list = get_correct_list_from_response_list(strict_target_list, strict_predict_list)
+
+        ## hard-match
+        strict_correct_list = get_correct_list_from_response_list(
+            strict_target_list, strict_predict_list
+        )
         tp_ner_strict += len(strict_correct_list)
         fp_ner_strict += len(strict_predict_list) - len(strict_correct_list)
         fn_ner_strict += len(strict_target_list) - len(strict_correct_list)
 
-
-    print(num_invalid) 
+    print(num_invalid)
     logger.write("#sentence: {}, #entity: {}\n".format(len(data), num_entity))
-    print(num_missing_spans, num_unmentioned_spans, num_unannotated_spans, num_incorrect_span_offsets, num_undefined_types, num_incorrect_types, num_other)
+    print(
+        num_missing_spans,
+        num_unmentioned_spans,
+        num_unannotated_spans,
+        num_incorrect_span_offsets,
+        num_undefined_types,
+        num_incorrect_types,
+        num_other,
+    )
 
-    print_metrics(tp_ner_strict, fp_ner_strict, fn_ner_strict, logger, "NER-strict-hardMatch", align=25)
+    print_metrics(
+        tp_ner_strict,
+        fp_ner_strict,
+        fn_ner_strict,
+        logger,
+        "NER-strict-hardMatch",
+        align=25,
+    )
 
 
 if __name__ == "__main__":
@@ -235,5 +249,3 @@ if __name__ == "__main__":
     # logger.write(json.dumps(opts.__dict__, indent=4) + "\n")
 
     report_metric(opts, logger)
-    
-

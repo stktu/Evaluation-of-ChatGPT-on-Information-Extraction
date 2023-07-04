@@ -3,7 +3,7 @@ import ast
 import sys
 cur_path = os.getcwd()
 sys.path.append(cur_path)
-from utils import Logger, print_metrics, get_correct_list_from_response_list
+from src.utils import Logger, print_metrics, get_correct_list_from_response_list
 from config import get_opts_ee as get_opts
 from difflib import SequenceMatcher
 
@@ -21,7 +21,7 @@ def dump_result_to_file(fw, opts, mode, tp, fp, fn):
 
     result_dict ={
         "dataset": opts.dataset,
-        "result_file": opts.result_file, 
+        "result_file": opts.result_file,
         "mode": mode,
         "f1": round(f1, 5),
         "p": round(p, 5),
@@ -49,18 +49,18 @@ def modify_ent_name_by_similarity(ent_name, target_list, threshold=0.5):
 
 # 解析 response
 def get_result_list(opts, response):
-    
+
     def all_type_is_str(tmp_res_list):
         flag = True
         for item in tmp_res_list:
             if type(item) != str:
                 flag = False
         return flag
-    
+
     if opts.COT:
         response = response.replace("answer is", "answer:")
         response = response.split("answer:")[-1].strip()
-    
+
     response = response.replace("], [", "]\n[")
     lines = response.split("\n")
     result_list = []
@@ -85,7 +85,7 @@ def get_result_list(opts, response):
                     result_list.append(tmp_evt)
             else:
                 res_flag = False
-                        
+
         if tmp_res_list != [] and type(tmp_res_list[0]) == list:  # [, ], [, ]
             for tmp in tmp_res_list:
                 if all_type_is_str(tmp):
@@ -119,7 +119,7 @@ def argument_report_metric(opts, logger, file_name=None, dump_to_file=False):
         event_types_list_lower = [item.lower() for item in event_types_list]
         role_types = types["role_types"]
         event2roles = types["event2roles"]
-    
+
     ## statistics
     num_undefined_type = 0
     tp_strict = 0
@@ -169,14 +169,14 @@ def argument_report_metric(opts, logger, file_name=None, dump_to_file=False):
             ##
             for tri in predict_strict:
                 tri[0] = modify_ent_name_by_similarity(tri[0], target_argument_list, threshold=0.5)
-            
+
             soft_correct = get_correct_list_from_response_list(target, predict_strict)
             tp_soft += len(soft_correct)
             fp_soft += len(predict_strict) - len(soft_correct)
             fn_soft += len(target) - len(soft_correct)
             # print("soft", soft_correct)
 
-       
+
     logger.write("#example: {}, #undefined event type: {}\n".format(len(data),  num_undefined_type))
 
     print(num_invalid)
@@ -222,7 +222,7 @@ def argument_report_metric_head_tail(opts, logger, file_name=None):
         th_dict = json.load(fr_ht)
         head_list = [th_dict["head"][item]["verbose"].lower() for item in th_dict["head"].keys()]
         tail_list = [th_dict["tail"][item]["verbose"].lower() for item in th_dict["tail"].keys()]
-    
+
     ## statistics
     tp_head = 0
     fp_head = 0
@@ -253,7 +253,7 @@ def argument_report_metric_head_tail(opts, logger, file_name=None):
                 if evt[1].lower() in roles_lower:
                     predict_strict.append([evt[0].lower(), evt[1].lower()])
 
-            
+
             correct_list = get_correct_list_from_response_list(target, predict_strict)
 
             if evt_type.lower() in head_list:
@@ -265,7 +265,7 @@ def argument_report_metric_head_tail(opts, logger, file_name=None):
                 tp_tail += len(correct_list)
                 fp_tail += len(predict_strict) - len(correct_list)
                 fn_tail += len(target) - len(correct_list)
-            
+
     f1_head = print_metrics(tp_head, fp_head, fn_head, logger, "head", align=6)
     f1_tail = print_metrics(tp_tail, fp_tail, fn_tail, logger, "tail", align=6)
 
@@ -275,7 +275,7 @@ if __name__ == "__main__":
     opts = get_opts()
 
     # log file
-    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file) 
+    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file)
     logger = Logger(file_name=opts.logger_file)
 
     argument_report_metric(opts, logger, dump_to_file=True)

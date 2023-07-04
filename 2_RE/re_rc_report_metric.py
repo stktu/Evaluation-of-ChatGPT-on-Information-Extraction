@@ -5,7 +5,7 @@ import ast
 from config import get_opts_re as get_opts
 cur_path = os.getcwd()
 sys.path.append(cur_path)
-from utils import Logger, print_metrics, get_correct_list_from_response_list, response_string_to_list
+from src.utils import Logger, print_metrics, get_correct_list_from_response_list, response_string_to_list
 
 
 def dump_result_to_file(fw, opts, mode, tp, fp, fn):
@@ -20,7 +20,7 @@ def dump_result_to_file(fw, opts, mode, tp, fp, fn):
 
     result_dict ={
         "dataset": opts.dataset,
-        "result_file": opts.result_file, 
+        "result_file": opts.result_file,
         "mode": mode,
         "f1": round(f1, 5),
         "p": round(p, 5),
@@ -51,7 +51,7 @@ def doc_report_metric(opts, logger, file_name=None):
         r_types_dict = types["relation"]
         r_types = list(r_types_dict.values())
         r_types_lower = [item.lower() for item in r_types]
-    
+
     ## statistics
     num_undefined_type = 0
     tp_all_order = 0
@@ -60,7 +60,7 @@ def doc_report_metric(opts, logger, file_name=None):
     tp_part_order = 0
     fp_part_order = 0
     fn_part_order = 0
-    
+
     for example in data:
         ## target
         order_target = []
@@ -97,7 +97,7 @@ def doc_report_metric(opts, logger, file_name=None):
         for ent in example["entities"]:
             if ent["name"].lower() not in unique_ent_list_lower:
                 unique_ent_list.append(ent["name"])
-                unique_ent_list_lower.append(ent["name"].lower()) 
+                unique_ent_list_lower.append(ent["name"].lower())
 
         ## res_dict
         # rels_dict = example["RE"]
@@ -120,7 +120,7 @@ def doc_report_metric(opts, logger, file_name=None):
                             all_order_predict.append([triple["h"].lower(), triple["t"].lower(), triple["r"].lower()])
                         if s_o_r not in r_types_lower:
                             num_undefined_type += 1
-        
+
         # part_order_predict
         part_order_predict = []
         for subj in part_entities:
@@ -134,7 +134,7 @@ def doc_report_metric(opts, logger, file_name=None):
                         s_o_r = triple["r"]
                         if s_o_r in r_types_lower and s_o_r.lower() != "no relation":
                             part_order_predict.append([triple["h"].lower(), triple["t"].lower(), triple["r"].lower()])
-                    
+
 
         all_order_correct = get_correct_list_from_response_list(order_target, all_order_predict)
         tp_all_order += len(all_order_correct)
@@ -145,10 +145,10 @@ def doc_report_metric(opts, logger, file_name=None):
         tp_part_order += len(part_order_correct)
         fp_part_order += len(part_order_predict) - len(part_order_correct)
         fn_part_order += len(order_target) - len(part_order_correct)
-       
+
     logger.write("#sentence: {}, #undefined relation type: {}\n".format(len(data),  num_undefined_type))
-    
-    all_f1 = print_metrics(tp_all_order, fp_all_order, fn_all_order, logger, "all", align=5)   
+
+    all_f1 = print_metrics(tp_all_order, fp_all_order, fn_all_order, logger, "all", align=5)
     _ = print_metrics(tp_part_order, fp_part_order, fn_part_order, logger, "part", align=5)
     logger.write("\n")
     return all_f1
@@ -185,7 +185,7 @@ def rc_get_result_dict(opts, example, r_types_lower, e_types_dict):
     res_flag = True
 
     for line in lines:
-        
+
         line = line.strip()
         if line  == "":
             continue
@@ -228,11 +228,11 @@ def rc_get_result_dict(opts, example, r_types_lower, e_types_dict):
             else:
                 num_left = rel_str.count("[")
                 num_right = rel_str.count("]")
-                
+
                 if num_left == 1 and num_right == 1:
                     start_idx = rel_str.find('[')
                     end_idx = rel_str.find(']')
-                    rel_str = rel_str[start_idx: end_idx+1] 
+                    rel_str = rel_str[start_idx: end_idx+1]
                 else:
                     res_flag = False
 
@@ -244,7 +244,7 @@ def rc_get_result_dict(opts, example, r_types_lower, e_types_dict):
                     rel_list = []
                     res_flag = False
 
-                for rel in rel_list: 
+                for rel in rel_list:
                     if rel.lower() in r_types_lower:
                         tmp_tri = {
                             "h": es[0].lower(),
@@ -278,11 +278,11 @@ def rc_get_result_dict(opts, example, r_types_lower, e_types_dict):
             else:
                 num_left = rel_str.count("[")
                 num_right = rel_str.count("]")
-                
+
                 if num_left == 1 and num_right == 1:
                     start_idx = rel_str.find('[')
                     end_idx = rel_str.find(']')
-                    rel_str = rel_str[start_idx: end_idx+1] 
+                    rel_str = rel_str[start_idx: end_idx+1]
                 else:
                     res_flag = False
 
@@ -294,7 +294,7 @@ def rc_get_result_dict(opts, example, r_types_lower, e_types_dict):
                     rel_list = []
                     res_flag = False
 
-                for rel in rel_list: 
+                for rel in rel_list:
                     if rel.lower() in r_types_lower:
                         tmp_tri = {
                             "h": es[0].lower(),
@@ -303,7 +303,7 @@ def rc_get_result_dict(opts, example, r_types_lower, e_types_dict):
                         }
                         if tmp_tri not in result_dict[ht_key]:
                             result_dict[ht_key].append(tmp_tri)
-    
+
     return result_dict, res_flag
 
 
@@ -325,7 +325,7 @@ def re_rc_report_metric(opts, logger, file_name=None, dump_to_file=False):
         r_types_dict = types["relation"]
         r_types = list(r_types_dict.values())
         r_types_lower = [item.lower() for item in r_types]
-    
+
     ## statistics
     num_undefined_type = 0
     tp_all_noorder = 0
@@ -370,7 +370,7 @@ def re_rc_report_metric(opts, logger, file_name=None, dump_to_file=False):
         for r_dic in example["relations"]:
             h_name = r_dic["h_name"]
             t_name = r_dic["t_name"]
-            
+
             so_key = h_name.lower() + " # " + t_name.lower()
             if so_key not in rels_dict:
                 continue
@@ -381,7 +381,7 @@ def re_rc_report_metric(opts, logger, file_name=None, dump_to_file=False):
                 s_o_r = triple["r"]
                 if s_o_r in r_types_lower and s_o_r.lower() != "no relation":
                     s_o_r_set.add(s_o_r)
-            
+
             o_s_r_set = set()
             so_key_reverse = t_name.lower() + " # " + h_name.lower()
             if so_key_reverse not in rels_dict:
@@ -394,11 +394,11 @@ def re_rc_report_metric(opts, logger, file_name=None, dump_to_file=False):
 
             if s_o_r_set == o_s_r_set:# or len(o_s_r_set) != 0:
                 num_entity_unchanged += 1
-                
+
             if len(o_s_r_set) == 0:
                 num_entity_changed += 1
 
-        
+
         ## all_no_order_predict
         all_no_order_predict = []
         for r_dic in example["relations"]:
@@ -431,7 +431,7 @@ def re_rc_report_metric(opts, logger, file_name=None, dump_to_file=False):
         tp_all_noorder += len(all_no_order_correct)
         fp_all_noorder += len(all_no_order_predict) - len(all_no_order_correct)
         fn_all_noorder += len(no_order_target) - len(all_no_order_correct)
-       
+
     logger.write("#sentence: {}, #undefined relation type: {}\n".format(len(data),  num_undefined_type))
 
     print(num_invalid)
@@ -477,7 +477,7 @@ def re_rc_report_metric_head_tail(opts, logger, file_name=None):
         head_list = [th_dict["head"][item].lower() for item in th_dict["head"].keys()]
         tail_list = [th_dict["tail"][item].lower() for item in th_dict["tail"].keys()]
 
-    
+
     ## statistics
     tp_all_head = 0
     fp_all_head = 0
@@ -511,7 +511,7 @@ def re_rc_report_metric_head_tail(opts, logger, file_name=None):
 
         head_predict = []
         tail_predict = []
-        
+
         for r_dic in example["relations"]:
             h_name = r_dic["h_name"]
             t_name = r_dic["t_name"]
@@ -524,7 +524,7 @@ def re_rc_report_metric_head_tail(opts, logger, file_name=None):
                 if s_o_r in head_list and s_o_r.lower() != "no relation":
                     head_predict.append([triple["h"].lower(), triple["t"].lower(), triple["r"].lower()])
                 if s_o_r in tail_list and s_o_r.lower() != "no relation":
-                    tail_predict.append([triple["h"].lower(), triple["t"].lower(), triple["r"].lower()])      
+                    tail_predict.append([triple["h"].lower(), triple["t"].lower(), triple["r"].lower()])
 
         head_correct = get_correct_list_from_response_list(head_target, head_predict)
         tp_all_head += len(head_correct)
@@ -538,14 +538,14 @@ def re_rc_report_metric_head_tail(opts, logger, file_name=None):
 
     f1_head = print_metrics(tp_all_head, fp_all_head, fn_all_head, logger, "head", align=8)
     f1_head = print_metrics(tp_all_tail, fp_all_tail, fn_all_tail, logger, "tail", align=8)
-    
+
 
 
 if __name__ == "__main__":
     opts = get_opts()
 
     # log file
-    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file) 
+    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file)
     logger = Logger(file_name=opts.logger_file)
 
     re_rc_report_metric(opts, logger, dump_to_file=True)

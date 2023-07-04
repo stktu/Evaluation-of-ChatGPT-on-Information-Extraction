@@ -6,7 +6,7 @@ from config import get_opts_re as get_opts
 from difflib import SequenceMatcher
 cur_path = os.getcwd()
 sys.path.append(cur_path)
-from utils import Logger, print_metrics, get_correct_list_from_response_list
+from src.utils import Logger, print_metrics, get_correct_list_from_response_list
 
 
 # dump metric to files
@@ -22,7 +22,7 @@ def dump_result_to_file(fw, opts, mode, tp, fp, fn):
 
     result_dict ={
         "dataset": opts.dataset,
-        "result_file": opts.result_file, 
+        "result_file": opts.result_file,
         "mode": mode,
         "f1": round(f1, 5),
         "p": round(p, 5),
@@ -48,14 +48,14 @@ def modify_ent_name_by_similarity(ent_name, target_list, threshold=0.5):
 
 # 解析 response
 def triplet_get_result_list(response):
-    
+
     def all_type_is_str(tmp_res_list):
         flag = True
         for item in tmp_res_list:
             if type(item) != str:
                 flag = False
         return flag
-    
+
     response = response.replace("], [", "]\n[")
     lines = response.split("\n")
     result_list = []
@@ -80,7 +80,7 @@ def triplet_get_result_list(response):
                     result_list.append(tmp_tri)
             else:
                 res_flag = False
-                        
+
         if tmp_res_list != [] and type(tmp_res_list[0]) == list:  # [, ], [, ]
             for tmp in tmp_res_list:
                 if all_type_is_str(tmp):
@@ -114,7 +114,7 @@ def triplet_report_metric(opts, logger, file_name=None, dump_to_file=False):
         r_types_dict = types["relation"]
         r_types_list = list(r_types_dict.values())
         r_types_list = [item.lower() for item in r_types_list]
-    
+
     ## statistics
     num_undefined_type = 0
     tp_strict = 0
@@ -136,7 +136,7 @@ def triplet_report_metric(opts, logger, file_name=None, dump_to_file=False):
             if r_dic not in uni_target_list:
                 uni_target_list.append(r_dic)
 
-        for r_dic in uni_target_list:        
+        for r_dic in uni_target_list:
             h_name = r_dic["h_name"]
             t_name = r_dic["t_name"]
             r = r_types_dict[r_dic["r"]].lower()
@@ -144,7 +144,7 @@ def triplet_report_metric(opts, logger, file_name=None, dump_to_file=False):
 
             if r != "no relation" and tmp_tri not in target:
                 target.append(tmp_tri)
-        
+
         for ent in example["entities"]:
             target_ent_list.append(ent["name"].lower())
 
@@ -166,7 +166,7 @@ def triplet_report_metric(opts, logger, file_name=None, dump_to_file=False):
             else:
                 num_undefined_type += 1
                 # res_flag = False
-        
+
         if not res_flag:
             num_invalid += 1
             # print(example["response"].replace("\n", ", "))
@@ -180,15 +180,15 @@ def triplet_report_metric(opts, logger, file_name=None, dump_to_file=False):
         for tri in predict_strict:
             tri[0] = modify_ent_name_by_similarity(tri[0], target_ent_list, threshold=0.5)
             tri[1] = modify_ent_name_by_similarity(tri[1], target_ent_list, threshold=0.5)
-        
+
         soft_correct = get_correct_list_from_response_list(target, predict_strict)
         tp_soft += len(soft_correct)
         fp_soft += len(predict_strict) - len(soft_correct)
         fn_soft += len(target) - len(soft_correct)
 
-       
+
     logger.write("#sentence: {}, #undefined relation type: {}\n".format(len(data),  num_undefined_type))
-    
+
     if dump_to_file:
         if opts.irrelevant:
             dump_metric_file = os.path.join(opts.result_dir, opts.task, "irrelevant-triplet-metric-" + "-".join(opts.dataset.split("/")) + ".json")
@@ -225,7 +225,7 @@ def triplet_report_metric_head_tail(opts, logger, file_name=None):
         r_types_dict = types["relation"]
         r_types_list = list(r_types_dict.values())
         r_types_list = [item.lower() for item in r_types_list]
-    
+
     with open(os.path.join(opts.input_dir, opts.task, opts.dataset, "head_tail_types.json"), "r", encoding="utf-8") as fr_ht:
         th_dict = json.load(fr_ht)
         head_list = [th_dict["head"][item].lower() for item in th_dict["head"].keys()]
@@ -249,7 +249,7 @@ def triplet_report_metric_head_tail(opts, logger, file_name=None):
             if r_dic not in uni_target_list:
                 uni_target_list.append(r_dic)
 
-        for r_dic in uni_target_list:        
+        for r_dic in uni_target_list:
             h_name = r_dic["h_name"].lower()
             t_name = r_dic["t_name"].lower()
             r = r_types_dict[r_dic["r"]].lower()
@@ -259,7 +259,7 @@ def triplet_report_metric_head_tail(opts, logger, file_name=None):
 
             if r != "no relation" and r in tail_list:
                 tail_target.append([h_name, t_name, r])
-        
+
 
         ## res_dict
         response = example["response"]
@@ -278,7 +278,7 @@ def triplet_report_metric_head_tail(opts, logger, file_name=None):
                 head_predict.append([rel["h"].lower(), rel["t"].lower(), rel["r"].lower()])
             if rel['r'].lower() in tail_list and rel['r'].lower() != "no relation":
                 tail_predict.append([rel["h"].lower(), rel["t"].lower(), rel["r"].lower()])
-        
+
 
         head_correct = get_correct_list_from_response_list(head_target, head_predict)
         tp_all_head += len(head_correct)
@@ -298,7 +298,7 @@ if __name__ == "__main__":
     opts = get_opts()
 
     # log file
-    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file) 
+    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file)
     logger = Logger(file_name=opts.logger_file)
 
     triplet_report_metric(opts, logger, dump_to_file=True)

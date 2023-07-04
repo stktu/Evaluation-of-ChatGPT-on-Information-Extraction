@@ -3,7 +3,7 @@ import ast
 import sys
 cur_path = os.getcwd()
 sys.path.append(cur_path)
-from utils import Logger, print_metrics, get_correct_list_from_response_list
+from src.utils import Logger, print_metrics, get_correct_list_from_response_list
 from config import get_opts_ee as get_opts
 from difflib import SequenceMatcher
 
@@ -21,7 +21,7 @@ def dump_result_to_file(fw, opts, mode, tp, fp, fn):
 
     result_dict ={
         "dataset": opts.dataset,
-        "result_file": opts.result_file, 
+        "result_file": opts.result_file,
         "mode": mode,
         "f1": round(f1, 5),
         "p": round(p, 5),
@@ -49,18 +49,18 @@ def modify_ent_name_by_similarity(ent_name, target_list, threshold=0.5):
 
 # 解析 response
 def get_result_list(opts, response):
-    
+
     def all_type_is_str(tmp_res_list):
         flag = True
         for item in tmp_res_list:
             if type(item) != str:
                 flag = False
         return flag
-    
+
     if opts.COT:
         response = response.replace("answer is", "answer:")
         response = response.split("answer:")[-1].strip()
-    
+
     response = response.replace("]], [", "]]\n[").replace("]],[", "]]\n[").replace("]] , [", "]]\n[")
     lines = response.split("\n")
     result_trigger_list = []
@@ -75,7 +75,7 @@ def get_result_list(opts, response):
         if len(line_item) != 2:
             res_flag = False
             continue
-        
+
         ## trigger
         try:
             tmp_trigger_list = ast.literal_eval(line_item[0])
@@ -93,7 +93,7 @@ def get_result_list(opts, response):
                     result_trigger_list.append(tmp_evt)
             else:
                 res_flag = False
-        
+
 
         ## argument
         if evt_type != "":
@@ -103,7 +103,7 @@ def get_result_list(opts, response):
             except:
                 res_flag = False
                 tmp_argument_list = []
-            
+
             for item in tmp_argument_list:
                 if type(item) == list and len(item) == 2 and all_type_is_str(item):
                     arg_role = [evt_type, item[0].lower(), item[1].lower()]
@@ -137,7 +137,7 @@ def joint_report_metric(opts, logger, file_name=None, dump_to_file=False):
         event2roles = types["event2roles"]
         event2roles_lower = {k.lower(): [item.lower() for item in v] for k, v in event2roles.items()}
         # print(event2roles_lower)
-    
+
     ## statistics
     num_undefined_type = 0
     trigger_tp_strict = 0
@@ -163,16 +163,16 @@ def joint_report_metric(opts, logger, file_name=None, dump_to_file=False):
         target_trigger_list = []
         target_argument = []
         target_argument_list = []
-        
+
         for event in example["event"]:
             evt_type = event_types[event["subtype"].replace(":", ".")]["verbose"]
             # roles_lower = [item.lower() for item in event2roles[evt_type]]
             trigger_str = event["trigger"]
-            
+
             ## target
             target_trigger.append([trigger_str.lower(), evt_type.lower()])
             target_trigger_list.append(trigger_str.lower())
-            
+
             for arg in event["arguments"]:
                 argument_str = arg["text"]
                 role_str = role_types[arg["role"]]["verbose"]
@@ -199,10 +199,10 @@ def joint_report_metric(opts, logger, file_name=None, dump_to_file=False):
         trigger_tp_strict += len(strict_correct)
         trigger_fp_strict += len(predict_strict_trigger) - len(strict_correct)
         trigger_fn_strict += len(target_trigger) - len(strict_correct)
-        
+
         for tri in predict_strict_trigger:
             tri[0] = modify_ent_name_by_similarity(tri[0], target_trigger_list, threshold=0.5)
-        
+
         soft_correct = get_correct_list_from_response_list(target_trigger, predict_strict_trigger)
         trigger_tp_soft += len(soft_correct)
         trigger_fp_soft += len(predict_strict_trigger) - len(soft_correct)
@@ -220,16 +220,16 @@ def joint_report_metric(opts, logger, file_name=None, dump_to_file=False):
         argument_tp_strict += len(strict_correct)
         argument_fp_strict += len(predict_strict_argument) - len(strict_correct)
         argument_fn_strict += len(target_argument) - len(strict_correct)
-        
+
         for arg in predict_strict_argument:
             arg[1] = modify_ent_name_by_similarity(arg[1], target_argument_list, threshold=0.5)
-        
+
         soft_correct = get_correct_list_from_response_list(target_argument, predict_strict_argument)
         argument_tp_soft += len(soft_correct)
         argument_fp_soft += len(predict_strict_argument) - len(soft_correct)
         argument_fn_soft += len(target_argument) - len(soft_correct)
 
-       
+
     logger.write("#example: {}, #undefined event type: {}\n".format(len(data),  num_undefined_type))
     trigger_f1_strict = print_metrics(trigger_tp_strict, trigger_fp_strict, trigger_fn_strict, logger, "strict", align=6)
     trigger_f1_soft = print_metrics(trigger_tp_soft, trigger_fp_soft, trigger_fn_soft, logger, "soft", align=6)
@@ -283,7 +283,7 @@ def joint_report_metric_head_tail(opts, logger, file_name=None):
         th_dict = json.load(fr_ht)
         head_list = [th_dict["head"][item]["verbose"].lower() for item in th_dict["head"].keys()]
         tail_list = [th_dict["tail"][item]["verbose"].lower() for item in th_dict["tail"].keys()]
-    
+
     ## statistics
     tp_head = 0
     fp_head = 0
@@ -296,19 +296,19 @@ def joint_report_metric_head_tail(opts, logger, file_name=None):
 
         head_target = []
         tail_target = []
-        
+
         for event in example["event"]:
             evt_type = event_types[event["subtype"].replace(":", ".")]["verbose"]
             # roles_lower = [item.lower() for item in event2roles[evt_type]]
             trigger_str = event["trigger"]
-            
+
             for arg in event["arguments"]:
                 argument_str = arg["text"]
                 role_str = role_types[arg["role"]]["verbose"]
 
                 if evt_type.lower() in head_list:
                     head_target.append([evt_type.lower(), argument_str.lower(), role_str.lower()])
-                
+
                 if evt_type.lower() in tail_list:
                     tail_target.append([evt_type.lower(), argument_str.lower(), role_str.lower()])
 
@@ -318,14 +318,14 @@ def joint_report_metric_head_tail(opts, logger, file_name=None):
         ### predict argument
         head_predict = []
         tail_predict = []
-        
+
         for arg in predict_argument_list:
             if arg[0].lower() in event_types_list_lower and arg[2].lower() in event2roles_lower[arg[0].lower()]:
                 if arg[0].lower() in head_list:
                     head_predict.append([arg[0].lower(), arg[1].lower(), arg[2].lower()])
                 if arg[0].lower() in tail_list:
                     tail_predict.append([arg[0].lower(), arg[1].lower(), arg[2].lower()])
-            
+
 
         head_correct = get_correct_list_from_response_list(head_target, head_predict)
         tp_head += len(head_correct)
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     opts = get_opts()
 
     # log file
-    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file) 
+    opts.logger_file = os.path.join(opts.task, "report-metric-" + opts.logger_file)
     logger = Logger(file_name=opts.logger_file)
 
     joint_report_metric(opts, logger, dump_to_file=True)

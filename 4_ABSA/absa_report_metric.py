@@ -5,13 +5,13 @@ from difflib import SequenceMatcher
 from config import get_opts
 cur_path = os.getcwd()
 sys.path.append(cur_path)
-from utils import Logger, response_string_to_list, get_correct_list_from_response_list, print_metrics, get_f1
+from src.utils import Logger, response_string_to_list, get_correct_list_from_response_list, print_metrics, get_f1
 
 
 # 倾向于更多、更长的识别相应 term
 # ABSA <a, s, o>
 # aspects: 边界固定，适合字符串硬匹配 （起始位置，字符串内容完全一致）
-# sentiment: 种类固定，positive、negative、neutral， 适合字符串硬匹配 
+# sentiment: 种类固定，positive、negative、neutral， 适合字符串硬匹配
 # opinion: 边界较模糊 例如 not like，do not like 表示相同opinion
 #           1) 字符串硬匹配   2）编辑距离 相似度
 #
@@ -47,7 +47,7 @@ def dump_result_to_file(fw, opts, task, tp, fp, fn):
 
     result_dict ={
         "dataset": opts.dataset,
-        "result_file": opts.result_file, 
+        "result_file": opts.result_file,
         "mode": mode,
         "task": task,
         "f1": round(f1, 5),
@@ -80,7 +80,7 @@ def modify_to_target_by_edit_distance(predict_list, target_list, logger, thresho
                     return target_item
             return predict_list
 
-    ## list  
+    ## list
     if len(predict_list) == 0 or len(target_list) == 0:
         return predict_list, 0
     else:
@@ -104,7 +104,7 @@ def modify_to_target_by_edit_distance(predict_list, target_list, logger, thresho
                     new_predict_list.append(pred)
 
             return new_predict_list, num_modify
-        
+
         elif isinstance(predict_list[0], list):
             target_item_list = []
             for i in range(len(target_list[0])):
@@ -126,9 +126,9 @@ def modify_to_target_by_edit_distance(predict_list, target_list, logger, thresho
                             pred[i] = target_item_max_index
                             # logger.write("'{}' -> '{}'\n".format(pred_item, target_item_max_index))
             return predict_list, num_modify
-                    
+
         else:
-            logger.write("[ERROR]: unsupported type.\n")      
+            logger.write("[ERROR]: unsupported type.\n")
 
 # report metric by task
 def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
@@ -137,7 +137,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
     logger.write("\n")
     with open(file_name, 'r', encoding='utf-8') as fr:
         data = json.load(fr)
-    
+
     num_asp = 0
     num_opi = 0
     num_alsc = 0
@@ -208,7 +208,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
             tp_ae += len(correct_list)
             fp_ae += len(res_list) - len(correct_list)
             fn_ae += len(asp_list) - len(correct_list)
-        # OE    
+        # OE
         if "OE" == key:
             opi_list = []
             opi_span_list = []  # opi_str 有可能重复， 但是 opi_span 不重复
@@ -219,7 +219,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
                     if opi_span not in opi_span_list:
                         opi_span_list.append(opi_span)
                         opi_list.append(opi_str)
-            
+
             opi_list = [item.lower() for item in opi_list]
             num_opi += len(opi_list)
             response = example["OE"]
@@ -268,7 +268,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
                     if res_polarity not in ["positive", "negative", "neutral", "conflict"]:
                         res_flag = False
                         # print(cur_response)
-    
+
                     if res_polarity == asp["polarity"]:
                         tp_alsc += 1
                         tar_num -= 1
@@ -280,7 +280,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
             if not res_flag:
                 num_invalid += 1
             fn_alsc += tar_num
-                    
+
         # AOE
         if "AOE" == key:
             res_flag = True
@@ -301,10 +301,10 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
                         res_flag = False
                     if res_opinions != [] and type(res_opinions[0]) != str:
                         res_opinions = []
-                    
+
                     if opts.soft_match:
                         res_opinions, num_modify = modify_to_target_by_edit_distance(res_opinions, target_opinions, logger, threshold=0.5)
-                    
+
                     correct_list = get_correct_list_from_response_list(target_opinions, res_opinions)
                     # print(correct_list)
                     tp_aoe += len(correct_list)
@@ -326,7 +326,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
                 response = example["AESC"]
             elif "AESC_wang" == key:
                 response = example["AESC_wang"]
-            
+
             if "cot" in result_file:
                 response = response.replace("answer is", "answer:")
                 response = response.split("answer:")[-1].strip()
@@ -369,7 +369,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
             target_list = []
             for asp in example["aspects"]:
                 asp_term = asp["term"]
-                if asp_term != "":  
+                if asp_term != "":
                     # 转小写
                     pair_list = asp["pairs"]
                     for pair in pair_list:
@@ -409,7 +409,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
                             a = tmp[0]
                             for i in range(1, len(tmp)):
                                 res_list.append([a, tmp[i]])
-            
+
             if not res_flag:
                 num_invalid += 1
                 # print(tmp_list)
@@ -459,11 +459,11 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
                             res_list.append(tmp)
                         else:
                             res_flag = False
-                            
-            
+
+
             if opts.soft_match:
                 res_list, num_modify = modify_to_target_by_edit_distance(res_list, target_list, logger, threshold=0.5)
-            
+
             if not res_flag:
                 num_invalid += 1
                 # print(tmp_list)
@@ -485,7 +485,7 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
 
     print(num_invalid)
 
-    if "AE" == key: 
+    if "AE" == key:
         print_metrics(tp_ae, fp_ae, fn_ae, logger, "AE")
         if dump_to_file:
             dump_result_to_file(fw, opts, "AE", tp_ae, fp_ae, fn_ae)
@@ -496,31 +496,31 @@ def report_metric_by_key(opts, key, result_file, logger, dump_to_file=False):
         if dump_to_file:
             dump_result_to_file(fw, opts, "OE", tp_oe, fp_oe, fn_oe)
         return get_f1(tp_oe, fp_oe, fn_oe)
-        
+
     if "ALSC" == key or "ALSC_wang" == key:
         print_metrics(tp_alsc, fp_alsc, fn_alsc, logger, "ALSC")
         if dump_to_file:
             dump_result_to_file(fw, opts, "ALSC", tp_alsc, fp_alsc, fn_alsc)
         return get_f1(tp_alsc, fp_alsc, fn_alsc)
-        
+
     if "AOE" == key:
         print_metrics(tp_aoe, fp_aoe, fn_aoe, logger, "AOE")
         if dump_to_file:
             dump_result_to_file(fw, opts, "AOE", tp_aoe, fp_aoe, fn_aoe)
         return get_f1(tp_aoe, fp_aoe, fn_aoe)
-        
+
     if "AESC" == key or "AESC_wang" == key:
         print_metrics(tp_aesc, fp_aesc, fn_aesc, logger, "AESC")
         if dump_to_file:
             dump_result_to_file(fw, opts, "AESC", tp_aesc, fp_aesc, fn_aesc)
         return get_f1(tp_aesc, fp_aesc, fn_aesc)
-        
+
     if "Pair" == key:
         print_metrics(tp_pair, fp_pair, fn_pair, logger, "Pair")
         if dump_to_file:
             dump_result_to_file(fw, opts, "Pair", tp_pair, fp_pair, fn_pair)
         return get_f1(tp_pair, fp_pair, fn_pair)
-        
+
     if "Triplet" == key:
         print_metrics(tp_triplet, fp_triplet, fn_triplet, logger, "Triplet")
         if dump_to_file:
@@ -532,21 +532,21 @@ def get_metric(opts, logger):
 
     if opts.irrelevant:
         if "wang" in opts.dataset:
-            task_list = ["AE", "OE", "ALSC_wang"]  # 
-        if "fan" in opts.dataset: 
+            task_list = ["AE", "OE", "ALSC_wang"]  #
+        if "fan" in opts.dataset:
             task_list = ["AOE"]
-        if "penga" in opts.dataset: 
+        if "penga" in opts.dataset:
             task_list = ["AESC", "Pair"]
-        if "pengb" in opts.dataset: 
+        if "pengb" in opts.dataset:
             task_list = ["Triplet"]
 
     else:
 
-        task_list = ["AE", "OE", "ALSC", "AOE", "AESC", "Pair", "Triplet"] # 
-        
+        task_list = ["AE", "OE", "ALSC", "AOE", "AESC", "Pair", "Triplet"] #
+
         if "wang" in opts.dataset:
-            task_list = ["AE", "OE", "ALSC_wang", "AESC_wang"]  # 
-        if "fan" in opts.dataset: 
+            task_list = ["AE", "OE", "ALSC_wang", "AESC_wang"]  #
+        if "fan" in opts.dataset:
             task_list = ["AOE"]
 
     for task in task_list:
@@ -564,8 +564,8 @@ if __name__ == "__main__":
     logger_file = "report-metric-" + opts.task + "-" + "-".join(opts.dataset.split("/")) + "-" + str(opts.prompt) +".txt"
     logger_file = os.path.join(opts.task, logger_file)
     logger = Logger(file_name=logger_file)
-    
-    if "wang" in opts.dataset: 
+
+    if "wang" in opts.dataset:
         # "CON": "conflict",  # wang, 并且 14res 有 4 个 aspect 漏标了 polarity
         polarity_mapping.update(
             {
