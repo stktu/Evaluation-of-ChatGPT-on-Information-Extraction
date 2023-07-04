@@ -285,7 +285,7 @@ def ner_main_multi_thread(opts, bot, logger, num_thread=10):
 
     logger.write("{}\n".format(opts.test_file))
     logger.write("{}\n".format(opts.type_file))
-    ## load data
+    # load data
     logger.write("loading data ...\n")
     with open(opts.test_file, "r", encoding="utf-8") as fr, open(
         opts.type_file, "r", encoding="utf-8"
@@ -301,7 +301,7 @@ def ner_main_multi_thread(opts, bot, logger, num_thread=10):
                 for item in types["entities"]
             ]
 
-    ## sample
+    # sample
     index_list = list(range(0, len(data)))
     if opts.sample:
         logger.write("Sampling examples ...\n")
@@ -310,7 +310,7 @@ def ner_main_multi_thread(opts, bot, logger, num_thread=10):
         print(selected_idx)
     else:
         selected_idx = index_list
-    ## sample end
+    # sample end
 
     prompt_list = get_prompt_list(e_types)
     prompt_icl_list, prompt_cot_list = get_icl_cot_prompt_list(opts)
@@ -365,7 +365,6 @@ if __name__ == "__main__":
     openai.api_key_path = api_key_file
     bot = openai.ChatCompletion()
 
-    ## log file
     logger_file = os.path.join(opts.task, opts.logger_file)
     print(logger_file)
     logger = Logger(file_name=logger_file)

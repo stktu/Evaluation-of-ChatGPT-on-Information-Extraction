@@ -8,8 +8,8 @@ import backoff
 import openai
 
 
-## multi thread start
-## Read One Sample
+# multi thread start
+# Read One Sample
 class ReadSample(object):
     """read one sample from the data list"""
 
@@ -36,7 +36,7 @@ class ReadSample(object):
             self.lock.release()
 
 
-## Write One Sample
+# Write One Sample
 class WriteSample(object):
     def __init__(self, file_name, mode):
         self.file_name = file_name
