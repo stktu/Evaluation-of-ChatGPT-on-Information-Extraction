@@ -1,12 +1,11 @@
-import os
-import sys
-import json
 import ast
+import json
+import os
 from difflib import SequenceMatcher
+
 from config import get_opts_ner as get_opts
-cur_path = os.getcwd()
-sys.path.append(cur_path)
-from src.utils import Logger, print_metrics, get_correct_list_from_response_list, get_f1
+
+from src.utils import Logger, get_correct_list_from_response_list, print_metrics
 
 
 ## dump to file
@@ -20,7 +19,7 @@ def dump_result_to_file(fw, opts, mode, match, type, tp, fp, fn):
     if p + r != 0.0:
         f1 = 2.0 * p * r / (p + r)
 
-    result_dict ={
+    result_dict = {
         "dataset": opts.dataset,
         "result_file": opts.result_file,
         "mode": mode,
@@ -32,7 +31,7 @@ def dump_result_to_file(fw, opts, mode, match, type, tp, fp, fn):
         "tp": tp,
         "fp": fp,
         "fn": fn,
-        "tp+fn": tp+fn
+        "tp+fn": tp + fn,
     }
     fw.write(json.dumps(result_dict, ensure_ascii=False) + "\n")
 
@@ -50,7 +49,9 @@ def modify_to_target_by_edit_distance(predict, target_list, logger, threshold=0.
     if max_score > threshold:
         max_index = similarity_list.index(max_score)
         target_item = target_list[max_index].lower().strip()
-        if target_item != pred and (target_item in pred or pred in target_item):  # 允许 小幅度 span 起始位置不对
+        if target_item != pred and (
+            target_item in pred or pred in target_item
+        ):  # 允许 小幅度 span 起始位置不对
             # logger.write("'{}' -> '{}' | {}\n".format(pred, target_item, max_score))
             return target_item
 
@@ -60,9 +61,10 @@ def modify_to_target_by_edit_distance(predict, target_list, logger, threshold=0.
 ## 解析 response
 def response_string_to_list(response):
     """return
-        1) string 列表
-        2) list  列表
+    1) string 列表
+    2) list  列表
     """
+
     def get_list_by_string(list_str):
         try:
             res_list = ast.literal_eval(list_str)
@@ -81,15 +83,15 @@ def response_string_to_list(response):
         return res_list
 
     if num_left == 1:
-        start_idx = response.find('[')
+        start_idx = response.find("[")
         response = response[start_idx:]
         num_right = response.count("]")
         if num_right < 1:
             return res_list
         else:
-            start_idx = response.find('[')
-            end_idx = response.find(']')
-            span = response[start_idx: end_idx+1]
+            start_idx = response.find("[")
+            end_idx = response.find("]")
+            span = response[start_idx : end_idx + 1]
             res_list = get_list_by_string(span)
             res_list = [str(res).strip() for res in res_list]
             return res_list
@@ -99,13 +101,13 @@ def response_string_to_list(response):
     end_idx = -1
 
     for i, ch in enumerate(response):
-        if ch == '[':
+        if ch == "[":
             start_idx = i
-        if ch == ']':
+        if ch == "]":
             end_idx = i
         # print(start_idx, end_idx)
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            span = response[start_idx: end_idx+1]
+            span = response[start_idx : end_idx + 1]
             tmp_list = get_list_by_string(span)
             tmp_list = [str(res).strip() for res in tmp_list]
             res_list.append(tmp_list)
@@ -159,7 +161,9 @@ def report_metric(opts, logger):
     logger.write("Load file: {}\n".format(opts.result_file))
     logger.write("Load types file: {}\n".format(opts.type_file))
 
-    with open(opts.result_file, 'r', encoding='utf-8') as fr, open(opts.type_file, 'r', encoding='utf-8') as fr_type:
+    with open(opts.result_file, "r", encoding="utf-8") as fr, open(
+        opts.type_file, "r", encoding="utf-8"
+    ) as fr_type:
         data = json.load(fr)
         types = json.load(fr_type)
         e_types = types["entities"]
@@ -238,7 +242,7 @@ def report_metric(opts, logger):
         example["NER"] = get_result_list(response)
         res_flag = True
         # print(response)
-        if response.strip().strip('"').strip() != '[]' and example["NER"] == []:
+        if response.strip().strip('"').strip() != "[]" and example["NER"] == []:
             res_flag = False
 
         for ent in example["NER"]:
@@ -255,9 +259,10 @@ def report_metric(opts, logger):
             else:
                 boundaries_predict_list_dict[ent_type].append(ent_name)
 
-
             ## soft match
-            ent_name = modify_to_target_by_edit_distance(ent_name, boundaries_target_list, logger, threshold=0.5)
+            ent_name = modify_to_target_by_edit_distance(
+                ent_name, boundaries_target_list, logger, threshold=0.5
+            )
             strict_predict_list_soft_match.append([ent_type, ent_name])
             boundaries_predict_list_soft_match.append(ent_name)
 
@@ -270,8 +275,12 @@ def report_metric(opts, logger):
             # print("#", response)
 
         ## hard-match
-        strict_correct_list = get_correct_list_from_response_list(strict_target_list, strict_predict_list)
-        boundaries_correct_list = get_correct_list_from_response_list(boundaries_target_list, boundaries_predict_list)
+        strict_correct_list = get_correct_list_from_response_list(
+            strict_target_list, strict_predict_list
+        )
+        boundaries_correct_list = get_correct_list_from_response_list(
+            boundaries_target_list, boundaries_predict_list
+        )
 
         tp_ner_strict += len(strict_correct_list)
         fp_ner_strict += len(strict_predict_list) - len(strict_correct_list)
@@ -282,44 +291,101 @@ def report_metric(opts, logger):
         fn_ner_boundaries += len(boundaries_target_list) - len(boundaries_correct_list)
 
         ## soft-match
-        strict_correct_list_soft_match = get_correct_list_from_response_list(strict_target_list, strict_predict_list_soft_match)
-        boundaries_correct_list_soft_match = get_correct_list_from_response_list(boundaries_target_list, boundaries_predict_list_soft_match)
+        strict_correct_list_soft_match = get_correct_list_from_response_list(
+            strict_target_list, strict_predict_list_soft_match
+        )
+        boundaries_correct_list_soft_match = get_correct_list_from_response_list(
+            boundaries_target_list, boundaries_predict_list_soft_match
+        )
 
         tp_ner_strict_soft_match += len(strict_correct_list_soft_match)
-        fp_ner_strict_soft_match += len(strict_predict_list_soft_match) - len(strict_correct_list_soft_match)
-        fn_ner_strict_soft_match += len(strict_target_list) - len(strict_correct_list_soft_match)
+        fp_ner_strict_soft_match += len(strict_predict_list_soft_match) - len(
+            strict_correct_list_soft_match
+        )
+        fn_ner_strict_soft_match += len(strict_target_list) - len(
+            strict_correct_list_soft_match
+        )
 
         tp_ner_boundaries_soft_match += len(boundaries_correct_list_soft_match)
-        fp_ner_boundaries_soft_match += len(boundaries_predict_list_soft_match) - len(boundaries_correct_list_soft_match)
-        fn_ner_boundaries_soft_match += len(boundaries_target_list) - len(boundaries_correct_list_soft_match)
+        fp_ner_boundaries_soft_match += len(boundaries_predict_list_soft_match) - len(
+            boundaries_correct_list_soft_match
+        )
+        fn_ner_boundaries_soft_match += len(boundaries_target_list) - len(
+            boundaries_correct_list_soft_match
+        )
 
         ## per type
         for key in e_types_list:
-            cur_correct = get_correct_list_from_response_list(boundaries_target_list_dict[key], boundaries_predict_list_dict[key])
+            cur_correct = get_correct_list_from_response_list(
+                boundaries_target_list_dict[key], boundaries_predict_list_dict[key]
+            )
             hard_boundaries[key]["tp"] += len(cur_correct)
-            hard_boundaries[key]["fp"] += len(boundaries_predict_list_dict[key]) - len(cur_correct)
-            hard_boundaries[key]["fn"] += len(boundaries_target_list_dict[key]) - len(cur_correct)
+            hard_boundaries[key]["fp"] += len(boundaries_predict_list_dict[key]) - len(
+                cur_correct
+            )
+            hard_boundaries[key]["fn"] += len(boundaries_target_list_dict[key]) - len(
+                cur_correct
+            )
 
-            cur_correct_soft = get_correct_list_from_response_list(boundaries_target_list_dict[key], boundaries_predict_list_soft_match_dict[key])
+            cur_correct_soft = get_correct_list_from_response_list(
+                boundaries_target_list_dict[key],
+                boundaries_predict_list_soft_match_dict[key],
+            )
             soft_boundaries[key]["tp"] += len(cur_correct_soft)
-            soft_boundaries[key]["fp"] += len(boundaries_predict_list_soft_match_dict[key]) - len(cur_correct_soft)
-            soft_boundaries[key]["fn"] += len(boundaries_target_list_dict[key]) - len(cur_correct_soft)
-
+            soft_boundaries[key]["fp"] += len(
+                boundaries_predict_list_soft_match_dict[key]
+            ) - len(cur_correct_soft)
+            soft_boundaries[key]["fn"] += len(boundaries_target_list_dict[key]) - len(
+                cur_correct_soft
+            )
 
     print(num_invalid)
-    logger.write("#sentence: {}, #entity: {}, #undefined type: {}\n".format(len(data), num_entity, num_undefined_type))
+    logger.write(
+        "#sentence: {}, #entity: {}, #undefined type: {}\n".format(
+            len(data), num_entity, num_undefined_type
+        )
+    )
 
     if not opts.irrelevant:
-        dump_metric_file = os.path.join(os.path.join(opts.result_dir, opts.task), opts.metric_file)
+        dump_metric_file = os.path.join(
+            os.path.join(opts.result_dir, opts.task), opts.metric_file
+        )
     else:
-        dump_metric_file = os.path.join(os.path.join(opts.result_dir, opts.task), "irrelevant-" + opts.metric_file)
+        dump_metric_file = os.path.join(
+            os.path.join(opts.result_dir, opts.task), "irrelevant-" + opts.metric_file
+        )
     fw = open(dump_metric_file, "a", encoding="utf-8")
 
-    print_metrics(tp_ner_strict, fp_ner_strict, fn_ner_strict, logger, "NER-strict-hardMatch", align=25)
-    dump_result_to_file(fw, opts, "strict", "hard", "all", tp_ner_strict, fp_ner_strict, fn_ner_strict)
+    print_metrics(
+        tp_ner_strict,
+        fp_ner_strict,
+        fn_ner_strict,
+        logger,
+        "NER-strict-hardMatch",
+        align=25,
+    )
+    dump_result_to_file(
+        fw, opts, "strict", "hard", "all", tp_ner_strict, fp_ner_strict, fn_ner_strict
+    )
 
-    print_metrics(tp_ner_strict_soft_match, fp_ner_strict_soft_match, fn_ner_strict_soft_match, logger, "NER-strict-softMatch", align=25)
-    dump_result_to_file(fw, opts, "strict", "soft", "all", tp_ner_strict_soft_match, fp_ner_strict_soft_match, fn_ner_strict_soft_match)
+    print_metrics(
+        tp_ner_strict_soft_match,
+        fp_ner_strict_soft_match,
+        fn_ner_strict_soft_match,
+        logger,
+        "NER-strict-softMatch",
+        align=25,
+    )
+    dump_result_to_file(
+        fw,
+        opts,
+        "strict",
+        "soft",
+        "all",
+        tp_ner_strict_soft_match,
+        fp_ner_strict_soft_match,
+        fn_ner_strict_soft_match,
+    )
 
     # per type
     # align_char = max([len(key) for key in e_types_list]) + 8
@@ -338,11 +404,12 @@ def report_metric_by_file(opts, file_name, logger, mode="strict", match="hard"):
     logger.write("Load file: {}\n".format(file_name))
     logger.write("Load types file: {}\n".format(opts.type_file))
 
-    with open(file_name, 'r', encoding='utf-8') as fr, open(opts.type_file, 'r', encoding='utf-8') as fr_type:
+    with open(file_name, "r", encoding="utf-8") as fr, open(
+        opts.type_file, "r", encoding="utf-8"
+    ) as fr_type:
         data = json.load(fr)
         types = json.load(fr_type)
         e_types = types["entities"]
-
 
     ## statistics
     num_undefined_type = 0
@@ -360,7 +427,6 @@ def report_metric_by_file(opts, file_name, logger, mode="strict", match="hard"):
     tp_ner_strict_soft_match = 0
     fp_ner_strict_soft_match = 0
     fn_ner_strict_soft_match = 0
-
 
     for example in data:
         ## target
@@ -395,14 +461,19 @@ def report_metric_by_file(opts, file_name, logger, mode="strict", match="hard"):
             boundaries_predict_list.append(ent_name)
 
             ## soft match
-            ent_name = modify_to_target_by_edit_distance(ent_name, boundaries_target_list, logger, threshold=0.5)
+            ent_name = modify_to_target_by_edit_distance(
+                ent_name, boundaries_target_list, logger, threshold=0.5
+            )
             strict_predict_list_soft_match.append([ent_type, ent_name])
             boundaries_predict_list_soft_match.append(ent_name)
 
-
         ## hard-match
-        strict_correct_list = get_correct_list_from_response_list(strict_target_list, strict_predict_list)
-        boundaries_correct_list = get_correct_list_from_response_list(boundaries_target_list, boundaries_predict_list)
+        strict_correct_list = get_correct_list_from_response_list(
+            strict_target_list, strict_predict_list
+        )
+        boundaries_correct_list = get_correct_list_from_response_list(
+            boundaries_target_list, boundaries_predict_list
+        )
 
         tp_ner_strict += len(strict_correct_list)
         fp_ner_strict += len(strict_predict_list) - len(strict_correct_list)
@@ -413,34 +484,77 @@ def report_metric_by_file(opts, file_name, logger, mode="strict", match="hard"):
         fn_ner_boundaries += len(boundaries_target_list) - len(boundaries_correct_list)
 
         ## soft-match
-        strict_correct_list_soft_match = get_correct_list_from_response_list(strict_target_list, strict_predict_list_soft_match)
-        boundaries_correct_list_soft_match = get_correct_list_from_response_list(boundaries_target_list, boundaries_predict_list_soft_match)
+        strict_correct_list_soft_match = get_correct_list_from_response_list(
+            strict_target_list, strict_predict_list_soft_match
+        )
+        boundaries_correct_list_soft_match = get_correct_list_from_response_list(
+            boundaries_target_list, boundaries_predict_list_soft_match
+        )
 
         tp_ner_strict_soft_match += len(strict_correct_list_soft_match)
-        fp_ner_strict_soft_match += len(strict_predict_list_soft_match) - len(strict_correct_list_soft_match)
-        fn_ner_strict_soft_match += len(strict_target_list) - len(strict_correct_list_soft_match)
+        fp_ner_strict_soft_match += len(strict_predict_list_soft_match) - len(
+            strict_correct_list_soft_match
+        )
+        fn_ner_strict_soft_match += len(strict_target_list) - len(
+            strict_correct_list_soft_match
+        )
 
         tp_ner_boundaries_soft_match += len(boundaries_correct_list_soft_match)
-        fp_ner_boundaries_soft_match += len(boundaries_predict_list_soft_match) - len(boundaries_correct_list_soft_match)
-        fn_ner_boundaries_soft_match += len(boundaries_target_list) - len(boundaries_correct_list_soft_match)
+        fp_ner_boundaries_soft_match += len(boundaries_predict_list_soft_match) - len(
+            boundaries_correct_list_soft_match
+        )
+        fn_ner_boundaries_soft_match += len(boundaries_target_list) - len(
+            boundaries_correct_list_soft_match
+        )
 
-
-    logger.write("#sentence: {}, #entity: {}, #undefined type: {}\n".format(len(data), num_entity, num_undefined_type))
+    logger.write(
+        "#sentence: {}, #entity: {}, #undefined type: {}\n".format(
+            len(data), num_entity, num_undefined_type
+        )
+    )
 
     if mode == "strict" and match == "hard":
-        f1 = print_metrics(tp_ner_strict, fp_ner_strict, fn_ner_strict, logger, "NER-strict-hardMatch", align=25)
+        f1 = print_metrics(
+            tp_ner_strict,
+            fp_ner_strict,
+            fn_ner_strict,
+            logger,
+            "NER-strict-hardMatch",
+            align=25,
+        )
         return f1
 
     if mode == "boundaries" and match == "hard":
-        f1 = print_metrics(tp_ner_boundaries, fp_ner_boundaries, fn_ner_boundaries, logger, "NER-boundaries-hardMatch", align=25)
+        f1 = print_metrics(
+            tp_ner_boundaries,
+            fp_ner_boundaries,
+            fn_ner_boundaries,
+            logger,
+            "NER-boundaries-hardMatch",
+            align=25,
+        )
         return f1
 
     if mode == "strict" and match == "soft":
-        f1 = print_metrics(tp_ner_strict_soft_match, fp_ner_strict_soft_match, fn_ner_strict_soft_match, logger, "NER-strict-softMatch", align=25)
+        f1 = print_metrics(
+            tp_ner_strict_soft_match,
+            fp_ner_strict_soft_match,
+            fn_ner_strict_soft_match,
+            logger,
+            "NER-strict-softMatch",
+            align=25,
+        )
         return f1
 
     if mode == "boundaries" and match == "soft":
-        f1 = print_metrics(tp_ner_boundaries_soft_match, fp_ner_boundaries_soft_match, fn_ner_boundaries_soft_match, logger, "NER-boundaries-softMatch", align=25)
+        f1 = print_metrics(
+            tp_ner_boundaries_soft_match,
+            fp_ner_boundaries_soft_match,
+            fn_ner_boundaries_soft_match,
+            logger,
+            "NER-boundaries-softMatch",
+            align=25,
+        )
         return f1
 
 
@@ -450,16 +564,25 @@ def report_metric_head_tail(opts, logger):
     logger.write("Load file: {}\n".format(opts.result_file))
     logger.write("Load types file: {}\n".format(opts.type_file))
 
-    with open(opts.result_file, 'r', encoding='utf-8') as fr, open(opts.type_file, 'r', encoding='utf-8') as fr_type:
+    with open(opts.result_file, "r", encoding="utf-8") as fr, open(
+        opts.type_file, "r", encoding="utf-8"
+    ) as fr_type:
         data = json.load(fr)
         types = json.load(fr_type)
         e_types = types["entities"]
 
-    with open(os.path.join(opts.input_dir, opts.task, opts.dataset, "head_tail_types.json"), "r", encoding="utf-8") as fr_ht:
+    with open(
+        os.path.join(opts.input_dir, opts.task, opts.dataset, "head_tail_types.json"),
+        "r",
+        encoding="utf-8",
+    ) as fr_ht:
         th_dict = json.load(fr_ht)
-        head_list = [th_dict["head"][item]["verbose"].lower() for item in th_dict["head"].keys()]
-        tail_list = [th_dict["tail"][item]["verbose"].lower() for item in th_dict["tail"].keys()]
-
+        head_list = [
+            th_dict["head"][item]["verbose"].lower() for item in th_dict["head"].keys()
+        ]
+        tail_list = [
+            th_dict["tail"][item]["verbose"].lower() for item in th_dict["tail"].keys()
+        ]
 
     ## statistics
     tp_ner_head = 0
@@ -474,7 +597,6 @@ def report_metric_head_tail(opts, logger):
         head_target_list = []
         tail_target_list = []
 
-
         for ent in example["entities"]:
             ent_name = ent["e_name"].lower()
             if opts.verbose_type:
@@ -487,7 +609,6 @@ def report_metric_head_tail(opts, logger):
 
             if ent_type in tail_list:
                 tail_target_list.append([ent_type, ent_name])
-
 
         ## predict
         head_predict_list = []
@@ -507,14 +628,17 @@ def report_metric_head_tail(opts, logger):
             if ent_type in tail_list:
                 tail_predict_list.append([ent_type, ent_name])
 
-
         ## hard-match
-        head_correct_list = get_correct_list_from_response_list(head_target_list, head_predict_list)
+        head_correct_list = get_correct_list_from_response_list(
+            head_target_list, head_predict_list
+        )
         tp_ner_head += len(head_correct_list)
         fp_ner_head += len(head_predict_list) - len(head_correct_list)
         fn_ner_head += len(head_target_list) - len(head_correct_list)
 
-        tail_correct_list = get_correct_list_from_response_list(tail_target_list, tail_predict_list)
+        tail_correct_list = get_correct_list_from_response_list(
+            tail_target_list, tail_predict_list
+        )
         tp_ner_tail += len(tail_correct_list)
         fp_ner_tail += len(tail_predict_list) - len(tail_correct_list)
         fn_ner_tail += len(tail_target_list) - len(tail_correct_list)
@@ -531,4 +655,3 @@ if __name__ == "__main__":
     logger = Logger(file_name=opts.logger_file)
 
     report_metric(opts, logger)
-
