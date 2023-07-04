@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "evaluation-of-chatgpt-on-information-extraction"
+version = "0.1.0"
+description = ""
+authors = ["stktu <34226464+stktu@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+openai = "^0.27.8"
+backoff = "^2.2.1"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^6.0.0"
+black = "^23.3.0"
+isort = "^5.12.0"
+mypy = "^1.4.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
